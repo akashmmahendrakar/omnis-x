@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OMNIS-X | Campus Digital Twin Management</title>
+<style>
+:root{--bg:#0b1220;--card:#121c2f;--line:#22304a;--tx:#e6edf7;--mut:#8a9bb8;--ac:#22d3a6;--bl:#3b82f6;--rd:#ef4444;--or:#f59e0b}
+*{box-sizing:border-box;margin:0}body{font-family:Segoe UI,system-ui,sans-serif;background:var(--bg);color:var(--tx);display:flex;min-height:100vh}
+nav{width:220px;background:#0a101c;border-right:1px solid var(--line);padding:20px 12px;position:sticky;top:0;height:100vh}
+nav h1{font-size:20px;color:var(--ac);padding:0 10px 4px}nav small{display:block;color:var(--mut);font-size:11px;padding:0 10px 20px}
+nav button{display:block;width:100%;text-align:left;background:none;border:0;color:var(--mut);padding:11px 12px;border-radius:10px;font-size:14px;cursor:pointer;margin-bottom:4px}
+nav button.on,nav button:hover{background:var(--card);color:var(--tx)}
+main{flex:1;padding:24px;min-width:0}header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;gap:10px;flex-wrap:wrap}
+header h2{font-size:22px}.pill{background:#0f3d33;color:var(--ac);padding:5px 12px;border-radius:20px;font-size:12px}
+.btn{background:var(--bl);color:#fff;border:0;padding:9px 14px;border-radius:9px;cursor:pointer;font-size:13px}.btn.g{background:var(--card);border:1px solid var(--line)}.btn.r{background:var(--rd)}.btn.s{padding:5px 10px;font-size:12px}
+.grid{display:grid;gap:14px}.k5{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}.two{grid-template-columns:2fr 1fr}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}.card h3{font-size:14px;color:var(--mut);margin-bottom:12px;font-weight:600}
+.kpi .v{font-size:30px;font-weight:700;margin-top:6px}.kpi .i{font-size:22px}
+.tab{display:none}.tab.on{display:block}
+table{width:100%;border-collapse:collapse;font-size:12px}td,th{border:1px solid var(--line);padding:6px;vertical-align:top}th{color:var(--mut);background:#0e1627}
+.cell{background:#16233b;border-radius:6px;padding:4px 6px;margin:2px 0}.cell.bad{background:#4a1d24;border:1px solid var(--rd)}.cell b{color:var(--ac)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px}
+.badge{padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600}.Critical{background:#4a1d24;color:#ff8a8a}.High{background:#4a3210;color:#ffc46b}.Medium{background:#13324f;color:#7cc0ff}.Low{background:#0f3d33;color:var(--ac)}
+.bar{height:8px;background:#1b2a45;border-radius:5px;flex:1;overflow:hidden}.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--ac),var(--bl))}
+select,input[type=range]{background:#0e1627;color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:8px}
+.ctl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;font-size:13px}canvas{width:100%;background:#0e1627;border-radius:10px}
+.plan{font-size:12px;color:var(--mut)}.plan b{color:var(--tx)}
+@media(max-width:800px){nav{display:none}.two{grid-template-columns:1fr}}
+@media print{nav,.btn{display:none}body{background:#fff;color:#000}.card{border:1px solid #999;background:#fff}}
+</style></head><body>
+<nav><h1>OMNIS-X</h1><small>Campus Digital Twin Management</small>
+<button class="on" data-t="overview">📊 Overview</button><button data-t="timetable">📅 Smart Timetable</button>
+<button data-t="incidents">🚨 Incident Management</button><button data-t="twin">🏫 Digital Twin</button><button data-t="reports">📑 Reports & Analytics</button></nav>
+<main>
+<header><h2 id="title">Overview Dashboard</h2><div><span class="pill">● System online</span> <button class="btn g" onclick="window.print()">Export PDF</button></div></header>
+
+<section class="tab on" id="overview"><div class="grid k5" id="kpis"></div><br>
+<div class="grid two"><div class="card"><h3>Disruption trend (last 7 days)</h3><canvas id="trend" width="640" height="220"></canvas></div>
+<div class="card"><h3>Section room occupancy</h3><div id="depts"></div></div></div></section>
+
+<section class="tab" id="timetable"><div class="card"><h3>Weekly timetable (red = conflict)</h3><div style="overflow:auto"><table id="tt"></table></div></div><br>
+<div class="card"><h3>Detected conflicts & alternative slots</h3><div id="conf"></div></div></section>
+
+<section class="tab" id="incidents"><div class="card"><h3>Live incident alerts, severity & recovery recommendations</h3><div id="inc"></div></div></section>
+
+<section class="tab" id="twin"><div class="card"><h3>Cascading failure simulation</h3>
+<div class="ctl">Failing system: <select id="src"></select> Severity: <input type="range" id="sev" min="10" max="100" value="80"><span id="sevv">80%</span>
+<button class="btn" onclick="runSim()">Simulate cascade</button><button class="btn r" onclick="raise()">Raise as incident</button></div>
+<canvas id="graph" width="900" height="420"></canvas></div><br>
+<div class="grid two"><div class="card"><h3>Impacted systems</h3><div id="aff">Run a simulation.</div></div>
+<div class="card"><h3>Recovery plan (3 parallel crews)</h3><div id="plan" class="plan"></div></div></div></section>
+
+<section class="tab" id="reports"><div class="card"><h3>Export data</h3><div class="ctl">
+<a class="btn" id="e1">Download incidents (Excel)</a><a class="btn" id="e2">Download timetable (Excel)</a><button class="btn g" onclick="window.print()">Export PDF report</button></div>
+<div id="stats"></div></div></section>
+</main>
+<script>
+const API=location.protocol==='file:'?'http://localhost:5000':'';
+const $=s=>document.querySelector(s),j=(p,o)=>fetch(API+p,o).then(r=>r.json());
+const post=(p,b)=>j(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});
+const titles={overview:'Overview Dashboard',timetable:'Smart Timetable Management',incidents:'Incident Management',twin:'Campus Digital Twin Visualization',reports:'Reports & Analytics'};
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+ document.querySelectorAll('nav button,.tab').forEach(x=>x.classList.remove('on'));b.classList.add('on');$('#'+b.dataset.t).classList.add('on');
+ $('#title').textContent=titles[b.dataset.t];({overview:loadOverview,timetable:loadTT,incidents:loadInc,twin:loadTwin,reports:loadReports})[b.dataset.t]()});
+
+async function loadOverview(){const d=await j('/api/overview');
+ $('#kpis').innerHTML=d.kpis.map(k=>`<div class="card kpi"><span class="i">${k.icon}</span><div style="color:var(--mut);font-size:12px">${k.label}</div><div class="v">${k.value}</div></div>`).join('');
+ $('#depts').innerHTML=d.depts.map(x=>`<div class="row"><span style="width:70px">${x.name}</span><div class="bar"><i style="width:${x.occ}%"></i></div><span>${x.occ}%</span></div>`).join('');
+ const c=$('#trend'),g=c.getContext('2d'),W=c.width,H=c.height,m=Math.max(...d.trend)+1;g.clearRect(0,0,W,H);
+ g.strokeStyle='#22d3a6';g.lineWidth=3;g.beginPath();d.trend.forEach((v,i)=>{const x=30+i*(W-60)/6,y=H-25-v/m*(H-50);i?g.lineTo(x,y):g.moveTo(x,y)});g.stroke();
+ g.fillStyle='#8a9bb8';d.trend.forEach((v,i)=>{const x=30+i*(W-60)/6,y=H-25-v/m*(H-50);g.fillText(v,x-3,y-8);g.fillText('D'+(i+1),x-6,H-6)})}
+
+async function loadTT(){const d=await j('/api/timetable'),bad=new Set(d.conflicts.flatMap(c=>c.slots));
+ $('#tt').innerHTML='<tr><th></th>'+d.days.map(x=>`<th>${x}</th>`).join('')+'</tr>'+d.periods.map(p=>`<tr><th>P${p}</th>`+d.days.map(day=>'<td>'+
+  d.slots.filter(s=>s.day==day&&s.period==p).map(s=>`<div class="cell ${bad.has(s.id)?'bad':''}"><b>${s.section}</b> ${s.course}<br>${s.faculty} · ${s.room}</div>`).join('')+'</td>').join('')+'</tr>').join('');
+ $('#conf').innerHTML=d.conflicts.map(c=>`<div class="row"><div><b>${c.type}</b> — ${c.detail}<br><span style="color:var(--mut)">Suggested: ${c.suggestions.map(s=>s.day+' P'+s.period).join(', ')||'none'}</span></div>
+  <button class="btn s" onclick="resolveSlot(${c.slots[0]})">Auto-resolve</button></div>`).join('')||'<div class="row">✅ No conflicts detected</div>'}
+async function resolveSlot(id){await post('/api/timetable/resolve',{slot_id:id});loadTT()}
+
+async function loadInc(){const d=await j('/api/incidents');
+ $('#inc').innerHTML=d.map(i=>`<div class="row" style="align-items:flex-start"><div style="flex:1"><b>${i.title}</b> <span class="badge ${i.severity}">${i.severity}</span> <span style="color:var(--mut)">· ${i.status} · ${i.time} · risk ${i.risk}%</span>
+  <div class="plan">Impacts: ${i.impacted.join(' → ')}<br>Recovery ≈ ${i.total_hours}h: ${i.plan.map(p=>`<b>${p.label}</b> (crew ${p.crew}, ${p.start}-${p.end}h): ${p.action}`).join(' | ')}</div></div>
+  ${i.status=='Active'?`<button class="btn s" onclick="post('/api/incidents/${i.id}/resolve').then(loadInc)">Resolve</button>`:''}</div>`).join('')}
+
+let G=null,res=null,shown=-1;
+async function loadTwin(){if(!G){G=await j('/api/graph');$('#src').innerHTML=G.nodes.map(n=>`<option value="${n.id}">${n.label}</option>`).join('')}draw()}
+$('#sev').oninput=e=>$('#sevv').textContent=e.target.value+'%';
+function draw(){const c=$('#graph'),g=c.getContext('2d'),W=c.width,H=c.height,P=(n)=>[40+n.x*(W-80),30+n.y*(H-60)],by=Object.fromEntries(G.nodes.map(n=>[n.id,n]));
+ const imp=res?Object.fromEntries(res.affected.map(a=>[a.id,a])):{};g.clearRect(0,0,W,H);
+ G.edges.forEach(e=>{const[a,b]=[P(by[e.from]),P(by[e.to])],hot=imp[e.from]&&imp[e.to]&&imp[e.from].level<=shown&&imp[e.to].level<=shown;
+  g.strokeStyle=hot?'#ef4444':'#2a3b5c';g.lineWidth=hot?3:1.2;g.beginPath();g.moveTo(...a);g.lineTo(...b);g.stroke()});
+ G.nodes.forEach(n=>{const[x,y]=P(n),a=imp[n.id],on=a&&a.level<=shown;
+  g.fillStyle=on?`rgba(239,68,68,${.4+a.impact*.6})`:'#16233b';g.strokeStyle=on?'#ef4444':'#22d3a6';g.lineWidth=2;g.beginPath();g.arc(x,y,24,0,7);g.fill();g.stroke();
+  g.fillStyle='#e6edf7';g.font='12px Segoe UI';g.textAlign='center';g.fillText(n.label,x,y+42);if(on)g.fillText(Math.round(a.impact*100)+'%',x,y+4)})}
+async function runSim(){res=await post('/api/simulate',{node:$('#src').value,severity:$('#sev').value/100});shown=-1;
+ $('#aff').innerHTML=`<div class="row"><b>Institution risk index</b><b>${res.risk}%</b></div>`+res.affected.map(a=>`<div class="row"><span style="width:130px">${a.label}</span><div class="bar"><i style="width:${a.impact*100}%"></i></div><span>L${a.level} · ${Math.round(a.impact*100)}%</span></div>`).join('');
+ $('#plan').innerHTML=`<p>Total recovery ≈ <b>${res.total_hours}h</b></p>`+res.plan.map(p=>`<div class="row"><span><b>${p.label}</b><br>${p.action}</span><span>Crew ${p.crew}<br>${p.start}–${p.end}h</span></div>`).join('');
+ const max=Math.max(...res.affected.map(a=>a.level));for(let l=0;l<=max;l++)setTimeout(()=>{shown=l;draw()},l*700)}
+async function raise(){await post('/api/incidents',{node:$('#src').value,severity:$('#sev').value/100});alert('Incident raised – see Incident Management');}
+
+async function loadReports(){$('#e1').href=API+'/api/report/excel?type=incidents';$('#e2').href=API+'/api/report/excel?type=timetable';
+ const [i,t]=await Promise.all([j('/api/incidents'),j('/api/timetable')]);
+ const by={};i.forEach(x=>by[x.severity]=(by[x.severity]||0)+1);
+ $('#stats').innerHTML=`<div class="row">Total incidents<b>${i.length}</b></div>`+Object.entries(by).map(([k,v])=>`<div class="row"><span class="badge ${k}">${k}</span><b>${v}</b></div>`).join('')+
+ `<div class="row">Scheduled classes<b>${t.slots.length}</b></div><div class="row">Open timetable conflicts<b>${t.conflicts.length}</b></div>`}
+loadOverview();
+</script></body></html>
